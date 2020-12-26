@@ -603,6 +603,43 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		dev_sensors.insert(dev_sensors.end(), dev_sensors2.begin(), dev_sensors2.end());
 	}
 
+	// RGB
+	float in_exposure = 150;
+	float in_gain = 1500;
+
+	// DEPTH
+	float in_confidence_threshold = 1;
+	float in_digital_gain = 2;
+	float in_laser_power = 100;
+	float in_min_distance = 0;
+	float in_receiver_gain = 8;
+	float in_post_sharp = 0;
+	float in_pre_sharp = 0;
+	float in_noise_filtering = 6;
+
+	std::ifstream in(jsonConfig_);
+	if (in.is_open())
+	{
+		UINFO("JSON file is loaded! (%s)", jsonConfig_.c_str());
+
+		std::string key;
+	    in >> key >> in_exposure;
+		in >> key >> in_gain;
+
+		in >> key >> in_confidence_threshold;
+		in >> key >> in_digital_gain;
+		in >> key >> in_laser_power;
+		in >> key >> in_min_distance;
+		in >> key >> in_receiver_gain;
+		in >> key >> in_post_sharp;
+		in >> key >> in_pre_sharp;
+		in >> key >> in_noise_filtering;
+	}
+	else
+	{
+		UWARN("JSON file provided doesn't exist! (%s)", jsonConfig_.c_str());
+	}
+
 	UINFO("Device Sensors: ");
 	std::vector<rs2::sensor> sensors(2); //0=rgb 1=depth 2=(pose in dualMode_)
 	bool stereo = false;
@@ -623,6 +660,10 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 			if(!ir_)
 			{
 				sensors[0] = elem;
+				sensors[0].set_option(rs2_option::RS2_OPTION_AUTO_EXPOSURE_MODE, 0.0f);
+				sensors[0].set_option(rs2_option::RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0.0f);
+				sensors[0].set_option(rs2_option::RS2_OPTION_EXPOSURE, in_exposure);
+				sensors[0].set_option(rs2_option::RS2_OPTION_GAIN, in_gain);
 			}
 		}
 		else if ("Wide FOV Camera" == module_name)
@@ -654,6 +695,14 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		else if ("L500 Depth Sensor" == module_name)
 		{
 			sensors[1] = elem;
+			sensors[1].set_option(rs2_option::RS2_OPTION_CONFIDENCE_THRESHOLD, in_confidence_threshold);
+			sensors[1].set_option(rs2_option::RS2_OPTION_DIGITAL_GAIN, in_digital_gain);
+			sensors[1].set_option(rs2_option::RS2_OPTION_LASER_POWER, in_laser_power);
+			sensors[1].set_option(rs2_option::RS2_OPTION_MIN_DISTANCE, in_min_distance);
+			sensors[1].set_option(rs2_option::RS2_OPTION_GAIN, in_receiver_gain);
+			sensors[1].set_option(rs2_option::RS2_OPTION_POST_PROCESSING_SHARPENING, in_post_sharp);
+			sensors[1].set_option(rs2_option::RS2_OPTION_PRE_PROCESSING_SHARPENING, in_pre_sharp);
+			sensors[1].set_option(rs2_option::RS2_OPTION_NOISE_FILTERING, in_noise_filtering);
 			isL500_ = true;
 		}
 		else
@@ -1229,7 +1278,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 							rgb_frame = f;
 							is_rgb_arrived = true;
 						}
-					} 
+					}
 					else if(ir_ && !irDepth_)
 					{
 						//stereo D435
